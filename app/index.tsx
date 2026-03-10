@@ -1,82 +1,48 @@
-import React from 'react'
-import { SafeAreaView, View, Text, StatusBar, Pressable } from 'react-native'
-import { styles } from './styles'
+// Mobile Application Development Project
+// Group: Calculator App Team
+// Member: Diego Galvis
+// Phase 1 - basic layout for calculator screen
 
-const buttons: string[][] = [
-  ['AC', '+/-', '%', '÷'],
-  ['7', '8', '9', '×'],
-  ['4', '5', '6', '-'],
-  ['1', '2', '3', '+'],
-  ['0', '.', '=']
-]
-
-type ButtonType = 'number' | 'operator' | 'action' | 'equal'
-
-type CalcButtonProps = {
-  label: string
-  wide?: boolean
-  type?: ButtonType
-}
-
-const CalcButton = ({ label, wide = false, type = 'number' }: CalcButtonProps) => {
-  return (
-    <Pressable
-      style={[
-        styles.button,
-        wide && styles.buttonWide,
-        type === 'operator' && styles.operatorButton,
-        type === 'action' && styles.actionButton,
-        type === 'equal' && styles.equalButton
-      ]}
-    >
-      <Text
-        style={[
-          styles.buttonText,
-          type === 'action' && styles.actionText,
-          type === 'operator' && styles.operatorText
-        ]}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  )
-}
+import { Text, View } from "react-native";
 
 export default function Index() {
-  const getType = (label: string): ButtonType => {
-    if (label === '=') return 'equal'
-    if (['+', '-', '×', '÷'].includes(label)) return 'operator'
-    if (['AC', '+/-', '%'].includes(label)) return 'action'
-    return 'number'
-  }
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" />
-      <View style={styles.container}>
-        <View style={styles.topSection}>
-          <Text style={styles.smallText}>Calculator</Text>
-          <View style={styles.displayCard}>
-            <Text style={styles.expressionText}>12 + 8 × 3</Text>
-            <Text style={styles.resultText}>36</Text>
-          </View>
+    <View
+      style={{
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "#f2f2f2",
+      }}
+    >
+      <View style={{ width: 250, padding: 20, backgroundColor: "#ffffff", borderRadius: 10 }}>
+        
+        {/* Title */}
+        <Text style={{ fontSize: 32, textAlign: "center", marginBottom: 20 }}>
+          Calculator
+        </Text>
+
+        {/* Display */}
+        <View
+          style={{
+            backgroundColor: "#e6e6e6",
+            padding: 15,
+            borderRadius: 5,
+            marginBottom: 20,
+          }}
+        >
+          <Text style={{ fontSize: 28, textAlign: "right" }}>0</Text>
         </View>
 
-        <View style={styles.keypad}>
-          {buttons.map((row, rowIndex) => (
-            <View key={rowIndex} style={styles.row}>
-              {row.map((item) => (
-                <CalcButton
-                  key={item}
-                  label={item}
-                  wide={item === '0'}
-                  type={getType(item)}
-                />
-              ))}
-            </View>
-          ))}
+        {/* Button row */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <Text style={{ fontSize: 20 }}>1</Text>
+          <Text style={{ fontSize: 20 }}>2</Text>
+          <Text style={{ fontSize: 20 }}>3</Text>
+          <Text style={{ fontSize: 20 }}>+</Text>
         </View>
+
       </View>
-    </SafeAreaView>
-  )
+    </View>
+  );
 }

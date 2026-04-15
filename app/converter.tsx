@@ -3,8 +3,9 @@
 // Saves each conversion to history
 
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   ScrollView,
   StatusBar,
@@ -41,7 +42,14 @@ const CONVERSIONS: Record<string, Record<string, number>> = {
     ft: 0.0833333,
     mi: 0.0000157828,
   },
-  ft: { cm: 30.48, m: 0.3048, km: 0.0003048, in: 12, ft: 1, mi: 0.000189394 },
+  ft: {
+    cm: 30.48,
+    m: 0.3048,
+    km: 0.0003048,
+    in: 12,
+    ft: 1,
+    mi: 0.000189394,
+  },
   mi: { cm: 160934, m: 1609.34, km: 1.60934, in: 63360, ft: 5280, mi: 1 },
   kg: { kg: 1, g: 1000, lb: 2.20462, oz: 35.274 },
   g: { kg: 0.001, g: 1, lb: 0.00220462, oz: 0.035274 },
@@ -71,6 +79,24 @@ export default function Converter() {
   const [err, setErr] = useState("");
   const [showFromPicker, setShowFromPicker] = useState(false);
   const [showToPicker, setShowToPicker] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      const loadTheme = async () => {
+        try {
+          const savedDarkMode = await AsyncStorage.getItem("darkMode");
+          if (savedDarkMode !== null) {
+            setDarkMode(JSON.parse(savedDarkMode));
+          }
+        } catch (error) {
+          console.log("Error loading theme:", error);
+        }
+      };
+
+      loadTheme();
+    }, [])
+  );
 
   // Find which category a unit belongs to (Length or Weight)
   const getCategory = (unit: string) => {
@@ -163,12 +189,16 @@ export default function Converter() {
     onClose: () => void;
   }) => (
     <View style={s.pickerOverlay}>
-      <View style={s.pickerCard}>
+      <View style={[s.pickerCard, darkMode && s.darkPickerCard]}>
         {/* Show each unit as a tappable row */}
         {units.map((u) => (
           <TouchableOpacity
             key={u}
-            style={[s.pickerItem, u === selected && s.pickerSelected]}
+            style={[
+              s.pickerItem,
+              darkMode && s.darkPickerItem,
+              u === selected && s.pickerSelected,
+            ]}
             onPress={() => {
               onSelect(u);
               onClose();
@@ -177,6 +207,7 @@ export default function Converter() {
             <Text
               style={[
                 s.pickerText,
+                darkMode && s.darkPickerText,
                 u === selected && { color: ORANGE, fontWeight: "700" },
               ]}
             >
@@ -189,29 +220,33 @@ export default function Converter() {
   );
 
   return (
-    <View style={s.container}>
-      <StatusBar barStyle="dark-content" />
+    <View style={[s.container, darkMode && s.darkContainer]}>
+      <StatusBar barStyle={darkMode ? "light-content" : "dark-content"} />
 
       {/* Top bar with back button and title */}
       <View style={s.topBar}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons
+            name="arrow-back"
+            size={24}
+            color={darkMode ? "#fff" : "#333"}
+          />
         </TouchableOpacity>
-        <Text style={s.screenTitle}>Converter</Text>
+        <Text style={[s.screenTitle, darkMode && s.darkText]}>Converter</Text>
         <View style={{ width: 24 }} />
       </View>
 
       <ScrollView contentContainerStyle={s.body}>
-        <View style={s.card}>
+        <View style={[s.card, darkMode && s.darkCard]}>
           {/* Show the current category (Length or Weight) */}
           <Text style={s.categoryText}>Category: {getCategory(fromUnit)}</Text>
 
           {/* Input field and "from" unit selector */}
           <View style={s.inputRow}>
             <TextInput
-              style={s.input}
+              style={[s.input, darkMode && s.darkInput]}
               placeholder="0"
-              placeholderTextColor="#bbb"
+              placeholderTextColor={darkMode ? "#888" : "#bbb"}
               keyboardType="decimal-pad"
               value={input}
               onChangeText={(t) => {
@@ -222,14 +257,20 @@ export default function Converter() {
             />
             {/* Button to open the "from" unit picker */}
             <TouchableOpacity
-              style={s.unitBtn}
+              style={[s.unitBtn, darkMode && s.darkUnitBtn]}
               onPress={() => {
                 setShowFromPicker(!showFromPicker);
                 setShowToPicker(false);
               }}
             >
-              <Text style={s.unitLabel}>{fromUnit}</Text>
-              <Ionicons name="chevron-down" size={16} color="#666" />
+              <Text style={[s.unitLabel, darkMode && s.darkText]}>
+                {fromUnit}
+              </Text>
+              <Ionicons
+                name="chevron-down"
+                size={16}
+                color={darkMode ? "#fff" : "#666"}
+              />
             </TouchableOpacity>
           </View>
 
@@ -254,7 +295,11 @@ export default function Converter() {
 
           {/* Arrow pointing down between the two unit rows */}
           <View style={s.arrowWrap}>
-            <Ionicons name="arrow-down" size={28} color="#999" />
+            <Ionicons
+              name="arrow-down"
+              size={28}
+              color={darkMode ? "#ccc" : "#999"}
+            />
           </View>
 
           {/* Swap button to switch from and to units */}
@@ -269,21 +314,33 @@ export default function Converter() {
 
           {/* Output field and "to" unit selector */}
           <View style={s.inputRow}>
-            <View style={[s.input, s.outputField]}>
-              <Text style={[s.outputText, !result && { color: "#bbb" }]}>
+            <View style={[s.input, s.outputField, darkMode && s.darkInput]}>
+              <Text
+                style={[
+                  s.outputText,
+                  darkMode && s.darkText,
+                  !result && { color: darkMode ? "#888" : "#bbb" },
+                ]}
+              >
                 {result ?? "0"}
               </Text>
             </View>
             {/* Button to open the "to" unit picker */}
             <TouchableOpacity
-              style={s.unitBtn}
+              style={[s.unitBtn, darkMode && s.darkUnitBtn]}
               onPress={() => {
                 setShowToPicker(!showToPicker);
                 setShowFromPicker(false);
               }}
             >
-              <Text style={s.unitLabel}>{toUnit}</Text>
-              <Ionicons name="chevron-down" size={16} color="#666" />
+              <Text style={[s.unitLabel, darkMode && s.darkText]}>
+                {toUnit}
+              </Text>
+              <Ionicons
+                name="chevron-down"
+                size={16}
+                color={darkMode ? "#fff" : "#666"}
+              />
             </TouchableOpacity>
           </View>
 
@@ -321,11 +378,11 @@ export default function Converter() {
 
         {/* Clear button */}
         <TouchableOpacity
-          style={s.clearBtn}
+          style={[s.clearBtn, darkMode && s.darkClearBtn]}
           onPress={clearFields}
           activeOpacity={0.8}
         >
-          <Text style={s.clearText}>Clear</Text>
+          <Text style={[s.clearText, darkMode && s.darkText]}>Clear</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -340,6 +397,9 @@ const s = StyleSheet.create({
     backgroundColor: "#f5f5f5",
     paddingTop: 70,
   },
+  darkContainer: {
+    backgroundColor: "#121212",
+  },
   // Top navigation bar
   topBar: {
     flexDirection: "row",
@@ -353,6 +413,9 @@ const s = StyleSheet.create({
     fontSize: 20,
     fontWeight: "600",
     color: "#222",
+  },
+  darkText: {
+    color: "#fff",
   },
   // Scrollable content area padding
   body: {
@@ -369,6 +432,9 @@ const s = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
+  },
+  darkCard: {
+    backgroundColor: "#1e1e1e",
   },
   // Category label (e.g. "Category: Length")
   categoryText: {
@@ -392,6 +458,10 @@ const s = StyleSheet.create({
     borderBottomColor: "#e0e0e0",
     paddingVertical: 10,
   },
+  darkInput: {
+    color: "#fff",
+    borderBottomColor: "#444",
+  },
   // Output field (non-editable)
   outputField: {
     borderBottomColor: "#e0e0e0",
@@ -410,6 +480,9 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     gap: 4,
+  },
+  darkUnitBtn: {
+    backgroundColor: "#2a2a2a",
   },
   // Unit label text inside the selector button
   unitLabel: {
@@ -461,6 +534,10 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e3e3e3",
   },
+  darkClearBtn: {
+    backgroundColor: "#1e1e1e",
+    borderColor: "#333",
+  },
   // Clear button text
   clearText: {
     color: "#333",
@@ -491,12 +568,18 @@ const s = StyleSheet.create({
     borderRadius: 10,
     overflow: "hidden",
   },
+  darkPickerCard: {
+    backgroundColor: "#2a2a2a",
+  },
   // Each item in the unit picker list
   pickerItem: {
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 0.5,
     borderBottomColor: "#eee",
+  },
+  darkPickerItem: {
+    borderBottomColor: "#444",
   },
   // Highlighted (selected) picker item
   pickerSelected: {
@@ -506,5 +589,8 @@ const s = StyleSheet.create({
   pickerText: {
     fontSize: 16,
     color: "#444",
+  },
+  darkPickerText: {
+    color: "#fff",
   },
 });

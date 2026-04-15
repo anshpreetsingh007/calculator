@@ -4,8 +4,9 @@
 // Saves each plotted equation to history
 
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   StatusBar,
   StyleSheet,
@@ -42,16 +43,16 @@ function parseEquation(input: string) {
 
   // Replace math symbols with JavaScript equivalents
   expr = expr
-    .replace(/\^/g, "**")           // ^ becomes ** (power)
-    .replace(/x²/g, "x**2")         // x² becomes x**2
-    .replace(/sin/g, "Math.sin")     // sin becomes Math.sin
-    .replace(/cos/g, "Math.cos")     // cos becomes Math.cos
-    .replace(/tan/g, "Math.tan")     // tan becomes Math.tan
-    .replace(/sqrt/g, "Math.sqrt")   // sqrt becomes Math.sqrt
-    .replace(/abs/g, "Math.abs")     // abs becomes Math.abs
-    .replace(/log/g, "Math.log")     // log becomes Math.log
-    .replace(/pi/g, "Math.PI")       // pi becomes Math.PI
-    .replace(/\be\b/g, "Math.E");    // e becomes Math.E
+    .replace(/\^/g, "**") // ^ becomes ** (power)
+    .replace(/x²/g, "x**2") // x² becomes x**2
+    .replace(/sin/g, "Math.sin") // sin becomes Math.sin
+    .replace(/cos/g, "Math.cos") // cos becomes Math.cos
+    .replace(/tan/g, "Math.tan") // tan becomes Math.tan
+    .replace(/sqrt/g, "Math.sqrt") // sqrt becomes Math.sqrt
+    .replace(/abs/g, "Math.abs") // abs becomes Math.abs
+    .replace(/log/g, "Math.log") // log becomes Math.log
+    .replace(/pi/g, "Math.PI") // pi becomes Math.PI
+    .replace(/\be\b/g, "Math.E"); // e becomes Math.E
 
   // Check for any unsafe characters
   if (/[^0-9x+\-*/().,\s*MathsincotaglqrtbpPIEabsnd]/.test(expr)) {
@@ -61,7 +62,7 @@ function parseEquation(input: string) {
   // Try to create a function from the expression
   try {
     const fn = new Function("x", `"use strict"; return (${expr});`) as (
-      x: number,
+      x: number
     ) => number;
     // Test it with x=1 to make sure it works
     const test = fn(1);
@@ -83,6 +84,24 @@ export default function GraphCalc() {
   const [points, setPoints] = useState<string>("");
   const [err, setErr] = useState("");
   const [plotted, setPlotted] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      const loadTheme = async () => {
+        try {
+          const savedDarkMode = await AsyncStorage.getItem("darkMode");
+          if (savedDarkMode !== null) {
+            setDarkMode(JSON.parse(savedDarkMode));
+          }
+        } catch (error) {
+          console.log("Error loading theme:", error);
+        }
+      };
+
+      loadTheme();
+    }, [])
+  );
 
   // Convert a math x value to screen x position (pixels)
   const toScreenX = (x: number) => ((x + RANGE) / (2 * RANGE)) * GRAPH_W;
@@ -167,7 +186,7 @@ export default function GraphCalc() {
         y1={0}
         x2={toScreenX(i)}
         y2={GRAPH_H}
-        stroke="#e0e0e0"
+        stroke={darkMode ? "#3a3a3a" : "#e0e0e0"}
         strokeWidth={0.5}
       />,
       // Horizontal grid line
@@ -177,36 +196,42 @@ export default function GraphCalc() {
         y1={toScreenY(i)}
         x2={GRAPH_W}
         y2={toScreenY(i)}
-        stroke="#e0e0e0"
+        stroke={darkMode ? "#3a3a3a" : "#e0e0e0"}
         strokeWidth={0.5}
-      />,
+      />
     );
   }
 
   return (
-    <View style={s.container}>
-      <StatusBar barStyle="dark-content" />
+    <View style={[s.container, darkMode && s.darkContainer]}>
+      <StatusBar barStyle={darkMode ? "light-content" : "dark-content"} />
 
       {/* Top bar with back button and title */}
       <View style={s.topBar}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons
+            name="arrow-back"
+            size={24}
+            color={darkMode ? "#fff" : "#333"}
+          />
         </TouchableOpacity>
-        <Text style={s.screenTitle}>Graph Calculator</Text>
+        <Text style={[s.screenTitle, darkMode && s.darkText]}>
+          Graph Calculator
+        </Text>
         <View style={{ width: 24 }} />
       </View>
 
       {/* Equation input field and Plot button */}
       <View style={s.inputRow}>
         <TextInput
-          style={s.eqInput}
+          style={[s.eqInput, darkMode && s.darkEqInput]}
           value={equation}
           onChangeText={(t) => {
             setEquation(t);
             setErr("");
           }}
           placeholder="y=x"
-          placeholderTextColor="#bbb"
+          placeholderTextColor={darkMode ? "#888" : "#bbb"}
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -225,7 +250,7 @@ export default function GraphCalc() {
       ) : null}
 
       {/* The graph area with SVG */}
-      <View style={s.graphWrap}>
+      <View style={[s.graphWrap, darkMode && s.darkGraphWrap]}>
         <Svg width={GRAPH_W} height={GRAPH_H}>
           {/* Background grid lines */}
           {gridLines}
@@ -236,7 +261,7 @@ export default function GraphCalc() {
             y1={0}
             x2={toScreenX(0)}
             y2={GRAPH_H}
-            stroke="#999"
+            stroke={darkMode ? "#bbb" : "#999"}
             strokeWidth={1}
           />
           {/* X-axis (horizontal center line) */}
@@ -245,7 +270,7 @@ export default function GraphCalc() {
             y1={toScreenY(0)}
             x2={GRAPH_W}
             y2={toScreenY(0)}
-            stroke="#999"
+            stroke={darkMode ? "#bbb" : "#999"}
             strokeWidth={1}
           />
 
@@ -254,13 +279,18 @@ export default function GraphCalc() {
             x={GRAPH_W - 8}
             y={toScreenY(0) - 6}
             fontSize={10}
-            fill="#999"
+            fill={darkMode ? "#bbb" : "#999"}
             textAnchor="end"
           >
             x
           </SvgText>
           {/* "y" label at the top of y-axis */}
-          <SvgText x={toScreenX(0) + 6} y={14} fontSize={10} fill="#999">
+          <SvgText
+            x={toScreenX(0) + 6}
+            y={14}
+            fontSize={10}
+            fill={darkMode ? "#bbb" : "#999"}
+          >
             y
           </SvgText>
 
@@ -278,63 +308,68 @@ export default function GraphCalc() {
 
       {/* Show the current equation below the graph */}
       {plotted ? (
-        <Text style={s.currentEq}>Current equation: {equation}</Text>
+        <Text style={[s.currentEq, darkMode && s.darkSubText]}>
+          Current equation: {equation}
+        </Text>
       ) : null}
 
       {/* Quick function buttons - first row */}
       <View style={s.funcRow}>
-        <TouchableOpacity style={s.funcBtn} onPress={() => insertFunc("x^2")}>
-          <Text style={s.funcText}>x²</Text>
+        <TouchableOpacity
+          style={[s.funcBtn, darkMode && s.darkFuncBtn]}
+          onPress={() => insertFunc("x^2")}
+        >
+          <Text style={[s.funcText, darkMode && s.darkText]}>x²</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={s.funcBtn}
+          style={[s.funcBtn, darkMode && s.darkFuncBtn]}
           onPress={() => insertFunc("sin(x)")}
         >
-          <Text style={s.funcText}>sin(x)</Text>
+          <Text style={[s.funcText, darkMode && s.darkText]}>sin(x)</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={s.funcBtn}
+          style={[s.funcBtn, darkMode && s.darkFuncBtn]}
           onPress={() => insertFunc("cos(x)")}
         >
-          <Text style={s.funcText}>cos(x)</Text>
+          <Text style={[s.funcText, darkMode && s.darkText]}>cos(x)</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={s.funcBtn}
+          style={[s.funcBtn, darkMode && s.darkFuncBtn]}
           onPress={() => insertFunc("log(x)")}
         >
-          <Text style={s.funcText}>log(x)</Text>
+          <Text style={[s.funcText, darkMode && s.darkText]}>log(x)</Text>
         </TouchableOpacity>
       </View>
 
       {/* Quick function buttons - second row */}
       <View style={s.funcRow}>
         <TouchableOpacity
-          style={s.funcBtn}
+          style={[s.funcBtn, darkMode && s.darkFuncBtn]}
           onPress={() => insertFunc("tan(x)")}
         >
-          <Text style={s.funcText}>tan(x)</Text>
+          <Text style={[s.funcText, darkMode && s.darkText]}>tan(x)</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={s.funcBtn}
+          style={[s.funcBtn, darkMode && s.darkFuncBtn]}
           onPress={() => insertFunc("sqrt(x)")}
         >
-          <Text style={s.funcText}>sqrt(x)</Text>
+          <Text style={[s.funcText, darkMode && s.darkText]}>sqrt(x)</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={s.funcBtn}
+          style={[s.funcBtn, darkMode && s.darkFuncBtn]}
           onPress={() => insertFunc("abs(x)")}
         >
-          <Text style={s.funcText}>abs(x)</Text>
+          <Text style={[s.funcText, darkMode && s.darkText]}>abs(x)</Text>
         </TouchableOpacity>
       </View>
 
       {/* Clear button to reset the graph */}
       <TouchableOpacity
-        style={s.clearBtn}
+        style={[s.clearBtn, darkMode && s.darkClearBtn]}
         onPress={clearGraph}
         activeOpacity={0.8}
       >
-        <Text style={s.clearBtnText}>Clear</Text>
+        <Text style={[s.clearBtnText, darkMode && s.darkText]}>Clear</Text>
       </TouchableOpacity>
     </View>
   );
@@ -347,6 +382,9 @@ const s = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
     paddingTop: 70,
+  },
+  darkContainer: {
+    backgroundColor: "#121212",
   },
   // Top navigation bar
   topBar: {
@@ -361,6 +399,12 @@ const s = StyleSheet.create({
     fontSize: 20,
     fontWeight: "600",
     color: "#222",
+  },
+  darkText: {
+    color: "#fff",
+  },
+  darkSubText: {
+    color: "#bbb",
   },
   // Row with equation input and plot button
   inputRow: {
@@ -380,6 +424,11 @@ const s = StyleSheet.create({
     color: "#333",
     borderWidth: 1,
     borderColor: "#e0e0e0",
+  },
+  darkEqInput: {
+    backgroundColor: "#1e1e1e",
+    color: "#fff",
+    borderColor: "#333",
   },
   // Orange plot button
   plotBtn: {
@@ -421,6 +470,9 @@ const s = StyleSheet.create({
     marginTop: 8,
     alignItems: "center",
   },
+  darkGraphWrap: {
+    backgroundColor: "#1e1e1e",
+  },
   // Text showing the current equation below the graph
   currentEq: {
     textAlign: "center",
@@ -445,6 +497,9 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
   },
+  darkFuncBtn: {
+    backgroundColor: "#2a2a2a",
+  },
   // Function button text
   funcText: {
     fontSize: 14,
@@ -461,6 +516,10 @@ const s = StyleSheet.create({
     backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: "#e3e3e3",
+  },
+  darkClearBtn: {
+    backgroundColor: "#1e1e1e",
+    borderColor: "#333",
   },
   // Clear button text
   clearBtnText: {

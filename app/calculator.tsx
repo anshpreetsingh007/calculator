@@ -3,7 +3,8 @@
 // Saves each calculation to history
 
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   StatusBar,
@@ -35,6 +36,24 @@ export default function Calculator() {
   const [justEvaluated, setJustEvaluated] = useState(false);
   const [expression, setExpression] = useState("");
   const [error, setError] = useState("");
+  const [darkMode, setDarkMode] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      const loadTheme = async () => {
+        try {
+          const savedDarkMode = await AsyncStorage.getItem("darkMode");
+          if (savedDarkMode !== null) {
+            setDarkMode(JSON.parse(savedDarkMode));
+          }
+        } catch (error) {
+          console.log("Error loading theme:", error);
+        }
+      };
+
+      loadTheme();
+    }, [])
+  );
 
   // Save a calculation result to history storage
   const saveToHistoryEntry = useCallback(async (entry: string) => {
@@ -164,7 +183,9 @@ export default function Calculator() {
 
     // Show the result and save to history
     const resultStr = parseFloat(result.toFixed(10)).toString();
-    const fullExpr = `${formatNum(prev)} ${op} ${formatNum(cur || prev)} = ${formatNum(resultStr)}`;
+    const fullExpr = `${formatNum(prev)} ${op} ${formatNum(
+      cur || prev
+    )} = ${formatNum(resultStr)}`;
 
     setExpression(fullExpr);
     setCur(resultStr);
@@ -229,28 +250,36 @@ export default function Calculator() {
   );
 
   return (
-    <View style={s.container}>
-      <StatusBar barStyle="dark-content" />
+    <View style={[s.container, darkMode && s.darkContainer]}>
+      <StatusBar barStyle={darkMode ? "light-content" : "dark-content"} />
 
       {/* Top bar with back button and title */}
       <View style={s.topBar}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons
+            name="arrow-back"
+            size={24}
+            color={darkMode ? "#fff" : "#333"}
+          />
         </TouchableOpacity>
-        <Text style={s.screenTitle}>Calculator</Text>
+        <Text style={[s.screenTitle, darkMode && s.darkText]}>Calculator</Text>
         <View style={{ width: 24 }} />
       </View>
 
       {/* Display area showing the expression and result */}
-      <View style={s.display}>
+      <View style={[s.display, darkMode && s.darkDisplay]}>
         {expression ? (
-          <Text style={s.expr} numberOfLines={1}>
+          <Text style={[s.expr, darkMode && s.darkExpr]} numberOfLines={1}>
             {expression}
           </Text>
         ) : null}
 
         <Text
-          style={[s.result, error && { color: "#FF3B30", fontSize: 20 }]}
+          style={[
+            s.result,
+            darkMode && s.darkText,
+            error && { color: "#FF3B30", fontSize: 20 },
+          ]}
           numberOfLines={1}
           adjustsFontSizeToFit
         >
@@ -293,20 +322,20 @@ export default function Calculator() {
           <CalcButton
             label="1"
             onPress={() => handleNum("1")}
-            style={s.numBtn}
-            textStyle={s.numText}
+            style={[s.numBtn, darkMode && s.darkNumBtn]}
+            textStyle={[s.numText, darkMode && s.darkText]}
           />
           <CalcButton
             label="2"
             onPress={() => handleNum("2")}
-            style={s.numBtn}
-            textStyle={s.numText}
+            style={[s.numBtn, darkMode && s.darkNumBtn]}
+            textStyle={[s.numText, darkMode && s.darkText]}
           />
           <CalcButton
             label="3"
             onPress={() => handleNum("3")}
-            style={s.numBtn}
-            textStyle={s.numText}
+            style={[s.numBtn, darkMode && s.darkNumBtn]}
+            textStyle={[s.numText, darkMode && s.darkText]}
           />
           <CalcButton
             label="-"
@@ -321,20 +350,20 @@ export default function Calculator() {
           <CalcButton
             label="4"
             onPress={() => handleNum("4")}
-            style={s.numBtn}
-            textStyle={s.numText}
+            style={[s.numBtn, darkMode && s.darkNumBtn]}
+            textStyle={[s.numText, darkMode && s.darkText]}
           />
           <CalcButton
             label="5"
             onPress={() => handleNum("5")}
-            style={s.numBtn}
-            textStyle={s.numText}
+            style={[s.numBtn, darkMode && s.darkNumBtn]}
+            textStyle={[s.numText, darkMode && s.darkText]}
           />
           <CalcButton
             label="6"
             onPress={() => handleNum("6")}
-            style={s.numBtn}
-            textStyle={s.numText}
+            style={[s.numBtn, darkMode && s.darkNumBtn]}
+            textStyle={[s.numText, darkMode && s.darkText]}
           />
           <CalcButton
             label="x"
@@ -349,20 +378,20 @@ export default function Calculator() {
           <CalcButton
             label="7"
             onPress={() => handleNum("7")}
-            style={s.numBtn}
-            textStyle={s.numText}
+            style={[s.numBtn, darkMode && s.darkNumBtn]}
+            textStyle={[s.numText, darkMode && s.darkText]}
           />
           <CalcButton
             label="8"
             onPress={() => handleNum("8")}
-            style={s.numBtn}
-            textStyle={s.numText}
+            style={[s.numBtn, darkMode && s.darkNumBtn]}
+            textStyle={[s.numText, darkMode && s.darkText]}
           />
           <CalcButton
             label="9"
             onPress={() => handleNum("9")}
-            style={s.numBtn}
-            textStyle={s.numText}
+            style={[s.numBtn, darkMode && s.darkNumBtn]}
+            textStyle={[s.numText, darkMode && s.darkText]}
           />
           <CalcButton
             label="/"
@@ -377,14 +406,14 @@ export default function Calculator() {
           <CalcButton
             label="0"
             onPress={() => handleNum("0")}
-            style={s.numBtn}
-            textStyle={s.numText}
+            style={[s.numBtn, darkMode && s.darkNumBtn]}
+            textStyle={[s.numText, darkMode && s.darkText]}
           />
           <CalcButton
             label="."
             onPress={() => handleNum(".")}
-            style={s.numBtn}
-            textStyle={s.numText}
+            style={[s.numBtn, darkMode && s.darkNumBtn]}
+            textStyle={[s.numText, darkMode && s.darkText]}
           />
           <CalcButton
             label="="
@@ -406,6 +435,9 @@ const s = StyleSheet.create({
     backgroundColor: "#f5f5f5",
     paddingTop: 70,
   },
+  darkContainer: {
+    backgroundColor: "#121212",
+  },
   // Top navigation bar
   topBar: {
     flexDirection: "row",
@@ -420,6 +452,9 @@ const s = StyleSheet.create({
     fontWeight: "600",
     color: "#222",
   },
+  darkText: {
+    color: "#fff",
+  },
   // Calculator display area (white box)
   display: {
     backgroundColor: "#fff",
@@ -431,11 +466,17 @@ const s = StyleSheet.create({
     alignItems: "flex-end",
     marginBottom: 20,
   },
+  darkDisplay: {
+    backgroundColor: "#1e1e1e",
+  },
   // Expression text above the result (smaller, gray)
   expr: {
     color: "#888",
     fontSize: 16,
     marginBottom: 8,
+  },
+  darkExpr: {
+    color: "#bbb",
   },
   // Main result text (large number)
   result: {
@@ -472,6 +513,9 @@ const s = StyleSheet.create({
   // Number button background (gray)
   numBtn: {
     backgroundColor: "#e0e0e0",
+  },
+  darkNumBtn: {
+    backgroundColor: "#2a2a2a",
   },
   // Number button text color
   numText: {

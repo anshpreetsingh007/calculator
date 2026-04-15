@@ -1,3 +1,7 @@
+// Calculator Screen - a basic calculator with +, -, ×, / operations
+// Shows a display area on top and a button grid at the bottom
+// Saves each calculation to history
+
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -10,12 +14,21 @@ import {
 } from "react-native";
 import { saveHistory } from "./utils/history";
 
+// Main orange color used for operator buttons
 const ORANGE = "#F5922A";
 
+// Type for the math operations we support
 type Op = "+" | "-" | "×" | "/" | null;
 
 export default function Calculator() {
   const router = useRouter();
+
+  // cur = current number being typed
+  // prev = the first number (before an operator is pressed)
+  // op = the chosen operator (+, -, ×, /)
+  // justEvaluated = true after pressing "=" so we know to reset on next input
+  // expression = the full expression shown above the result (e.g. "5 + 3 = 8")
+  // error = any error message to display
   const [cur, setCur] = useState("0");
   const [prev, setPrev] = useState("");
   const [op, setOp] = useState<Op>(null);
@@ -23,6 +36,7 @@ export default function Calculator() {
   const [expression, setExpression] = useState("");
   const [error, setError] = useState("");
 
+  // Save a calculation result to history storage
   const saveToHistoryEntry = useCallback(async (entry: string) => {
     await saveHistory({
       type: "calculator",
@@ -30,6 +44,7 @@ export default function Calculator() {
     });
   }, []);
 
+  // Format a number with commas (e.g. 1000 -> 1,000)
   const formatNum = (n: string) => {
     if (n.includes("Error") || n.includes("Infinity")) return n;
     const parts = n.split(".");
@@ -37,9 +52,11 @@ export default function Calculator() {
     return parts.join(".");
   };
 
+  // Handle when a number button (0-9 or ".") is pressed
   const handleNum = (digit: string) => {
     setError("");
 
+    // If we just got a result, start fresh with the new digit
     if (justEvaluated) {
       setCur(digit);
       setPrev("");
@@ -49,16 +66,20 @@ export default function Calculator() {
       return;
     }
 
+    // Don't allow two decimal points
     if (digit === "." && cur.includes(".")) return;
 
+    // Replace leading zero, or append the digit
     if (cur === "0" && digit !== ".") {
       setCur(digit);
     } else {
+      // Limit to 12 digits max
       if (cur.replace(".", "").replace("-", "").length >= 12) return;
       setCur(cur + digit);
     }
   };
 
+  // Do the actual math between two numbers
   const compute = (a: number, b: number, operator: Op): number | null => {
     switch (operator) {
       case "+":
@@ -68,17 +89,19 @@ export default function Calculator() {
       case "×":
         return a * b;
       case "/":
-        if (b === 0) return null;
-        return Math.round((a / b) * 1e10) / 1e10;
+        if (b === 0) return null; // Can't divide by zero
+        return Math.round((a / b) * 1e10) / 1e10; // Round to avoid floating point issues
       default:
         return b;
     }
   };
 
+  // Handle when an operator button (+, -, ×, /) is pressed
   const handleOp = (nextOp: Op) => {
     setError("");
     setJustEvaluated(false);
 
+    // If we already have a previous number and operator, calculate first
     if (prev && op && cur) {
       const result = compute(parseFloat(prev), parseFloat(cur), op);
 
@@ -93,6 +116,7 @@ export default function Calculator() {
       setOp(nextOp);
       setExpression(`${formatNum(resultStr)} ${nextOp}`);
     } else {
+      // First operator press - save current number and wait for next
       setPrev(cur);
       setCur("");
       setOp(nextOp);
@@ -100,14 +124,17 @@ export default function Calculator() {
     }
   };
 
+  // Handle when the "=" button is pressed
   const handleEquals = async () => {
     setError("");
 
+    // Need an operator and a first number to calculate
     if (!op || !prev) return;
 
     const a = parseFloat(prev);
     const b = parseFloat(cur || prev);
 
+    // Make sure both numbers are valid
     if (isNaN(a) || isNaN(b)) {
       setError("Invalid input");
       return;
@@ -115,6 +142,7 @@ export default function Calculator() {
 
     const result = compute(a, b, op);
 
+    // Handle divide by zero
     if (result === null) {
       setError("Cannot divide by zero");
       setCur("0");
@@ -124,6 +152,7 @@ export default function Calculator() {
       return;
     }
 
+    // Handle very large results
     if (!isFinite(result)) {
       setError("Result too large");
       setCur("0");
@@ -133,6 +162,7 @@ export default function Calculator() {
       return;
     }
 
+    // Show the result and save to history
     const resultStr = parseFloat(result.toFixed(10)).toString();
     const fullExpr = `${formatNum(prev)} ${op} ${formatNum(cur || prev)} = ${formatNum(resultStr)}`;
 
@@ -142,9 +172,11 @@ export default function Calculator() {
     setOp(null);
     setJustEvaluated(true);
 
+    // Save this calculation to history
     await saveToHistoryEntry(`${prev} ${op} ${cur || prev} = ${resultStr}`);
   };
 
+  // Clear everything and reset calculator
   const handleClear = () => {
     setCur("0");
     setPrev("");
@@ -154,11 +186,13 @@ export default function Calculator() {
     setJustEvaluated(false);
   };
 
+  // Switch between positive and negative number
   const handleToggleSign = () => {
     if (cur === "0") return;
     setCur(cur.startsWith("-") ? cur.slice(1) : "-" + cur);
   };
 
+  // Convert current number to percentage (divide by 100)
   const handlePercent = () => {
     const n = parseFloat(cur);
 
@@ -170,8 +204,10 @@ export default function Calculator() {
     setCur(String(n / 100));
   };
 
+  // What to show on the display - either an error or the formatted number
   const displayValue = error || formatNum(cur || "0");
 
+  // Reusable button component for the calculator grid
   const CalcButton = ({
     label,
     onPress,
@@ -196,6 +232,7 @@ export default function Calculator() {
     <View style={s.container}>
       <StatusBar barStyle="dark-content" />
 
+      {/* Top bar with back button and title */}
       <View style={s.topBar}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#333" />
@@ -204,6 +241,7 @@ export default function Calculator() {
         <View style={{ width: 24 }} />
       </View>
 
+      {/* Display area showing the expression and result */}
       <View style={s.display}>
         {expression ? (
           <Text style={s.expr} numberOfLines={1}>
@@ -220,7 +258,9 @@ export default function Calculator() {
         </Text>
       </View>
 
+      {/* Button grid with all calculator buttons */}
       <View style={s.grid}>
+        {/* Row 1: AC, ±, %, + */}
         <View style={s.row}>
           <CalcButton
             label="AC"
@@ -248,6 +288,7 @@ export default function Calculator() {
           />
         </View>
 
+        {/* Row 2: 1, 2, 3, - */}
         <View style={s.row}>
           <CalcButton
             label="1"
@@ -275,6 +316,7 @@ export default function Calculator() {
           />
         </View>
 
+        {/* Row 3: 4, 5, 6, × */}
         <View style={s.row}>
           <CalcButton
             label="4"
@@ -302,6 +344,7 @@ export default function Calculator() {
           />
         </View>
 
+        {/* Row 4: 7, 8, 9, / */}
         <View style={s.row}>
           <CalcButton
             label="7"
@@ -329,6 +372,7 @@ export default function Calculator() {
           />
         </View>
 
+        {/* Row 5: 0, ., = */}
         <View style={s.row}>
           <CalcButton
             label="0"
@@ -354,12 +398,15 @@ export default function Calculator() {
   );
 }
 
+// Styles for the calculator screen
 const s = StyleSheet.create({
+  // Main container
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
     paddingTop: 70,
   },
+  // Top navigation bar
   topBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -367,11 +414,13 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 10,
   },
+  // Screen title text
   screenTitle: {
     fontSize: 20,
     fontWeight: "600",
     color: "#222",
   },
+  // Calculator display area (white box)
   display: {
     backgroundColor: "#fff",
     marginHorizontal: 16,
@@ -382,16 +431,19 @@ const s = StyleSheet.create({
     alignItems: "flex-end",
     marginBottom: 20,
   },
+  // Expression text above the result (smaller, gray)
   expr: {
     color: "#888",
     fontSize: 16,
     marginBottom: 8,
   },
+  // Main result text (large number)
   result: {
     color: "#222",
     fontSize: 38,
     fontWeight: "300",
   },
+  // Grid that holds all button rows
   grid: {
     flex: 1,
     paddingHorizontal: 16,
@@ -399,10 +451,12 @@ const s = StyleSheet.create({
     paddingBottom: 30,
     gap: 10,
   },
+  // Each row of buttons
   row: {
     flexDirection: "row",
     gap: 10,
   },
+  // Base button style (circle shape)
   btn: {
     flex: 1,
     aspectRatio: 1,
@@ -410,19 +464,24 @@ const s = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  // Button text style
   btnText: {
     fontSize: 22,
     fontWeight: "500",
   },
+  // Number button background (gray)
   numBtn: {
     backgroundColor: "#e0e0e0",
   },
+  // Number button text color
   numText: {
     color: "#333",
   },
+  // Operator button background (orange)
   orangeBtn: {
     backgroundColor: ORANGE,
   },
+  // Operator button text (white)
   orangeText: {
     color: "#fff",
     fontWeight: "600",

@@ -1,3 +1,7 @@
+// History Screen - shows a list of all past calculations, conversions, and graphs
+// Users can view their history and clear all entries
+// Data is loaded from AsyncStorage when the screen is focused
+
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -12,25 +16,32 @@ import {
 } from "react-native";
 import { clearHistory, getHistory, HistoryItem } from "./utils/history";
 
+// Main orange color
 const ORANGE = "#F5922A";
 
 export default function History() {
   const router = useRouter();
+
+  // entries = list of history items to display
+  // loading = true while data is being fetched
   const [entries, setEntries] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Reload history every time this screen comes into focus
   useFocusEffect(
     useCallback(() => {
       loadHistory();
     }, []),
   );
 
+  // Fetch all history items from storage
   const loadHistory = async () => {
     const history = await getHistory();
     setEntries(history);
     setLoading(false);
   };
 
+  // Show a confirmation popup, then delete all history if user confirms
   const clearAll = () => {
     Alert.alert("Clear History", "Delete all history?", [
       { text: "Cancel", style: "cancel" },
@@ -45,6 +56,7 @@ export default function History() {
     ]);
   };
 
+  // Get the right icon for each history type
   const getIcon = (type: HistoryItem["type"]) => {
     switch (type) {
       case "calculator":
@@ -58,6 +70,7 @@ export default function History() {
     }
   };
 
+  // Get a readable label for each history type
   const getTypeLabel = (type: HistoryItem["type"]) => {
     switch (type) {
       case "calculator":
@@ -75,13 +88,16 @@ export default function History() {
     <View style={s.container}>
       <StatusBar barStyle="dark-content" />
 
+      {/* Top bar with back button, title, and trash icon */}
       <View style={s.topBar}>
+        {/* Back button */}
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
 
         <Text style={s.screenTitle}>History</Text>
 
+        {/* Trash icon to clear all history (only shown if there are entries) */}
         {entries.length > 0 ? (
           <TouchableOpacity onPress={clearAll}>
             <Ionicons name="trash-outline" size={22} color="#FF3B30" />
@@ -91,7 +107,9 @@ export default function History() {
         )}
       </View>
 
+      {/* Show empty state or the list of history entries */}
       {loading ? null : entries.length === 0 ? (
+        // Empty state - shown when there's no history
         <View style={s.empty}>
           <Ionicons name="time-outline" size={56} color="#ccc" />
           <Text style={s.emptyText}>No history yet</Text>
@@ -100,22 +118,26 @@ export default function History() {
           </Text>
         </View>
       ) : (
+        // List of history entries
         <FlatList
           data={entries}
           keyExtractor={(item) => item.id}
           contentContainerStyle={s.list}
           renderItem={({ item }) => (
             <View style={s.entry}>
+              {/* Icon circle showing the type (calculator/converter/graph) */}
               <View style={s.iconWrap}>
                 <Ionicons name={getIcon(item.type)} size={20} color={ORANGE} />
               </View>
 
+              {/* History entry text content */}
               <View style={s.entryContent}>
                 <Text style={s.entryType}>{getTypeLabel(item.type)}</Text>
                 <Text style={s.entryText}>{item.text}</Text>
               </View>
             </View>
           )}
+          // Small space between each entry
           ItemSeparatorComponent={() => <View style={s.sep} />}
         />
       )}
@@ -123,12 +145,15 @@ export default function History() {
   );
 }
 
+// Styles for the history screen
 const s = StyleSheet.create({
+  // Main container
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
     paddingTop: 70,
   },
+  // Top navigation bar
   topBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -136,16 +161,19 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 10,
   },
+  // Screen title text
   screenTitle: {
     fontSize: 20,
     fontWeight: "600",
     color: "#222",
   },
+  // List padding
   list: {
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 24,
   },
+  // Each history entry card
   entry: {
     backgroundColor: "#fff",
     borderRadius: 14,
@@ -154,6 +182,7 @@ const s = StyleSheet.create({
     alignItems: "flex-start",
     gap: 12,
   },
+  // Orange circle icon container
   iconWrap: {
     width: 38,
     height: 38,
@@ -162,30 +191,36 @@ const s = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  // Text content area (right side of the entry)
   entryContent: {
     flex: 1,
   },
+  // Type label (e.g. "Calculator") in orange
   entryType: {
     fontSize: 13,
     color: ORANGE,
     fontWeight: "700",
     marginBottom: 4,
   },
+  // The actual history text (e.g. "5 + 3 = 8")
   entryText: {
     fontSize: 16,
     color: "#333",
     fontWeight: "500",
     lineHeight: 22,
   },
+  // Separator between entries
   sep: {
     height: 10,
   },
+  // Empty state container (centered)
   empty: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 30,
   },
+  // "No history yet" text
   emptyText: {
     fontSize: 18,
     color: "#999",
@@ -193,6 +228,7 @@ const s = StyleSheet.create({
     marginTop: 10,
     marginBottom: 6,
   },
+  // Subtitle text under empty state
   emptySubtext: {
     fontSize: 14,
     color: "#bbb",

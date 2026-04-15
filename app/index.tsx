@@ -1,3 +1,7 @@
+// Home Screen - the main menu of the app
+// Shows a list of menu items (Calculator, Converter, Graph, History)
+// Has a dark mode toggle button (sun/moon icon) in the top right corner
+
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -10,8 +14,11 @@ import {
   View,
 } from "react-native";
 
+// Main orange color used across the app
 const ORANGE = "#F5922A";
 
+// List of menu items shown on the home screen
+// Each item has a label, icon, route (page to go to), and color
 const menuItems = [
   {
     label: "Calculator",
@@ -41,8 +48,11 @@ const menuItems = [
 
 export default function Home() {
   const router = useRouter();
+
+  // Track if dark mode is on or off
   const [darkMode, setDarkMode] = useState(false);
 
+  // When the app loads, check if user previously turned on dark mode
   useEffect(() => {
     const loadDarkMode = async () => {
       try {
@@ -55,6 +65,7 @@ export default function Home() {
     loadDarkMode();
   }, []);
 
+  // Toggle dark mode on/off and save the choice to storage
   const toggleDarkMode = async () => {
     const newValue = !darkMode;
     setDarkMode(newValue);
@@ -67,13 +78,16 @@ export default function Home() {
 
   return (
     <View style={[s.container, darkMode && s.containerDark]}>
+      {/* Change status bar text color based on dark mode */}
       <StatusBar barStyle={darkMode ? "light-content" : "dark-content"} />
 
+      {/* Header with title and dark mode toggle */}
       <View style={s.header}>
-        <View style={[s.avatar, darkMode && s.avatarDark]}>
-          <Ionicons name="person" size={28} color={darkMode ? "#bbb" : "#999"} />
-        </View>
+
+        {/* Page title */}
         <Text style={[s.title, darkMode && s.titleDark]}>Home</Text>
+
+        {/* Dark mode toggle - shows sun in dark mode, moon in light mode */}
         <TouchableOpacity onPress={toggleDarkMode}>
           <Ionicons
             name={darkMode ? "sunny" : "moon"}
@@ -83,6 +97,7 @@ export default function Home() {
         </TouchableOpacity>
       </View>
 
+      {/* Menu cards - loop through each menu item and display it */}
       <View style={s.menu}>
         {menuItems.map((item) => (
           <TouchableOpacity
@@ -90,11 +105,12 @@ export default function Home() {
             style={[
               s.card,
               darkMode && s.cardDark,
-              item.color === ORANGE && s.cardHighlight,
+              item.color === ORANGE && s.cardHighlight, // Orange cards get highlighted
             ]}
             activeOpacity={0.7}
-            onPress={() => router.push(item.route)}
+            onPress={() => router.push(item.route)} // Navigate to the page
           >
+            {/* Menu item icon */}
             <Ionicons
               name={item.icon}
               size={22}
@@ -107,6 +123,8 @@ export default function Home() {
               }
               style={s.cardIcon}
             />
+
+            {/* Menu item label */}
             <Text
               style={[
                 s.cardLabel,
@@ -116,6 +134,8 @@ export default function Home() {
             >
               {item.label}
             </Text>
+
+            {/* Arrow icon on the right side */}
             <Ionicons
               name="chevron-forward"
               size={20}
@@ -128,45 +148,41 @@ export default function Home() {
   );
 }
 
+// Styles for the home screen
 const s = StyleSheet.create({
+  // Main container - light background
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
     paddingTop: 70,
     paddingHorizontal: 20,
   },
+  // Dark mode background
   containerDark: {
     backgroundColor: "#121212",
   },
+  // Header row layout
   header: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 36,
   },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#e0e0e0",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  avatarDark: {
-    backgroundColor: "#2a2a2a",
-  },
+  // Page title text
   title: {
     fontSize: 26,
     fontWeight: "700",
     color: "#222",
     flex: 1,
   },
+  // Dark mode title color
   titleDark: {
     color: "#f0f0f0",
   },
+  // Menu list spacing
   menu: {
     gap: 14,
   },
+  // Each menu card style
   card: {
     flexDirection: "row",
     alignItems: "center",
@@ -180,21 +196,26 @@ const s = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  // Dark mode card background
   cardDark: {
     backgroundColor: "#1e1e1e",
   },
+  // Orange highlighted card
   cardHighlight: {
     backgroundColor: ORANGE,
   },
+  // Space between icon and label
   cardIcon: {
     marginRight: 14,
   },
+  // Menu item text
   cardLabel: {
     flex: 1,
     fontSize: 17,
     fontWeight: "600",
     color: "#333",
   },
+  // Dark mode text color
   cardLabelDark: {
     color: "#e0e0e0",
   },

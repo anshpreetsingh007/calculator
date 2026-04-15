@@ -49,7 +49,7 @@ export default function Home() {
           <Ionicons name="person" size={28} color="#999" />
         </View>
         <Text style={s.title}>Home</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push("/settings")}>
           <Ionicons name="settings-outline" size={24} color="#333" />
         </TouchableOpacity>
       </View>

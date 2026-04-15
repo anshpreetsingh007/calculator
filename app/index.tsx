@@ -1,5 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
   StatusBar,
   StyleSheet,
@@ -39,18 +41,45 @@ const menuItems = [
 
 export default function Home() {
   const router = useRouter();
+  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    const loadDarkMode = async () => {
+      try {
+        const saved = await AsyncStorage.getItem("darkMode");
+        if (saved !== null) setDarkMode(JSON.parse(saved));
+      } catch (e) {
+        console.log("Error loading dark mode:", e);
+      }
+    };
+    loadDarkMode();
+  }, []);
+
+  const toggleDarkMode = async () => {
+    const newValue = !darkMode;
+    setDarkMode(newValue);
+    try {
+      await AsyncStorage.setItem("darkMode", JSON.stringify(newValue));
+    } catch (e) {
+      console.log("Error saving dark mode:", e);
+    }
+  };
 
   return (
-    <View style={s.container}>
-      <StatusBar barStyle="dark-content" />
+    <View style={[s.container, darkMode && s.containerDark]}>
+      <StatusBar barStyle={darkMode ? "light-content" : "dark-content"} />
 
       <View style={s.header}>
-        <View style={s.avatar}>
-          <Ionicons name="person" size={28} color="#999" />
+        <View style={[s.avatar, darkMode && s.avatarDark]}>
+          <Ionicons name="person" size={28} color={darkMode ? "#bbb" : "#999"} />
         </View>
-        <Text style={s.title}>Home</Text>
-        <TouchableOpacity onPress={() => router.push("/settings")}>
-          <Ionicons name="settings-outline" size={24} color="#333" />
+        <Text style={[s.title, darkMode && s.titleDark]}>Home</Text>
+        <TouchableOpacity onPress={toggleDarkMode}>
+          <Ionicons
+            name={darkMode ? "sunny" : "moon"}
+            size={24}
+            color={darkMode ? "#FFD93D" : "#333"}
+          />
         </TouchableOpacity>
       </View>
 
@@ -58,25 +87,39 @@ export default function Home() {
         {menuItems.map((item) => (
           <TouchableOpacity
             key={item.label}
-            style={[s.card, item.color === ORANGE && s.cardHighlight]}
+            style={[
+              s.card,
+              darkMode && s.cardDark,
+              item.color === ORANGE && s.cardHighlight,
+            ]}
             activeOpacity={0.7}
             onPress={() => router.push(item.route)}
           >
             <Ionicons
               name={item.icon}
               size={22}
-              color={item.color === ORANGE ? "#fff" : "#555"}
+              color={
+                item.color === ORANGE
+                  ? "#fff"
+                  : darkMode
+                  ? "#ccc"
+                  : "#555"
+              }
               style={s.cardIcon}
             />
             <Text
-              style={[s.cardLabel, item.color === ORANGE && { color: "#fff" }]}
+              style={[
+                s.cardLabel,
+                darkMode && s.cardLabelDark,
+                item.color === ORANGE && { color: "#fff" },
+              ]}
             >
               {item.label}
             </Text>
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={item.color === ORANGE ? "#fff" : "#aaa"}
+              color={item.color === ORANGE ? "#fff" : darkMode ? "#888" : "#aaa"}
             />
           </TouchableOpacity>
         ))}
@@ -92,6 +135,9 @@ const s = StyleSheet.create({
     paddingTop: 70,
     paddingHorizontal: 20,
   },
+  containerDark: {
+    backgroundColor: "#121212",
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -106,11 +152,17 @@ const s = StyleSheet.create({
     alignItems: "center",
     marginRight: 12,
   },
+  avatarDark: {
+    backgroundColor: "#2a2a2a",
+  },
   title: {
     fontSize: 26,
     fontWeight: "700",
     color: "#222",
     flex: 1,
+  },
+  titleDark: {
+    color: "#f0f0f0",
   },
   menu: {
     gap: 14,
@@ -128,6 +180,9 @@ const s = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  cardDark: {
+    backgroundColor: "#1e1e1e",
+  },
   cardHighlight: {
     backgroundColor: ORANGE,
   },
@@ -139,5 +194,8 @@ const s = StyleSheet.create({
     fontSize: 17,
     fontWeight: "600",
     color: "#333",
+  },
+  cardLabelDark: {
+    color: "#e0e0e0",
   },
 });

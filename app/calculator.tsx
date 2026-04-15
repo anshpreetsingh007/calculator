@@ -1,165 +1,187 @@
-import { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useCallback, useState } from "react";
+import {
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { saveHistory } from "./utils/history";
 
-const ORANGE = '#F5922A';
-const DARK_BG = '#333';
+const ORANGE = "#F5922A";
 
-type Op = '+' | '-' | '×' | '/' | null;
+type Op = "+" | "-" | "×" | "/" | null;
 
 export default function Calculator() {
   const router = useRouter();
-  const [cur, setCur] = useState('0');
-  const [prev, setPrev] = useState('');
+  const [cur, setCur] = useState("0");
+  const [prev, setPrev] = useState("");
   const [op, setOp] = useState<Op>(null);
   const [justEvaluated, setJustEvaluated] = useState(false);
-  const [expression, setExpression] = useState('');
-  const [error, setError] = useState('');
+  const [expression, setExpression] = useState("");
+  const [error, setError] = useState("");
 
-  const saveToHistory = useCallback(async (entry: string) => {
-    try {
-      const raw = await AsyncStorage.getItem('calc_history');
-      const list: string[] = raw ? JSON.parse(raw) : [];
-      list.unshift(entry);
-      if (list.length > 50) list.pop();
-      await AsyncStorage.setItem('calc_history', JSON.stringify(list));
-    } catch {
-      // storage full or corrupted, not much we can do
-    }
+  const saveToHistoryEntry = useCallback(async (entry: string) => {
+    await saveHistory({
+      type: "calculator",
+      text: entry,
+    });
   }, []);
 
   const formatNum = (n: string) => {
-    if (n.includes('Error') || n.includes('Infinity')) return n;
-    const parts = n.split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return parts.join('.');
+    if (n.includes("Error") || n.includes("Infinity")) return n;
+    const parts = n.split(".");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return parts.join(".");
   };
 
   const handleNum = (digit: string) => {
-    setError('');
+    setError("");
+
     if (justEvaluated) {
       setCur(digit);
-      setPrev('');
+      setPrev("");
       setOp(null);
-      setExpression('');
+      setExpression("");
       setJustEvaluated(false);
       return;
     }
-    if (digit === '.' && cur.includes('.')) return;
-    if (cur === '0' && digit !== '.') {
+
+    if (digit === "." && cur.includes(".")) return;
+
+    if (cur === "0" && digit !== ".") {
       setCur(digit);
     } else {
-      if (cur.replace('.', '').replace('-', '').length >= 12) return;
+      if (cur.replace(".", "").replace("-", "").length >= 12) return;
       setCur(cur + digit);
-    }
-  };
-
-  const handleOp = (nextOp: Op) => {
-    setError('');
-    setJustEvaluated(false);
-
-    if (prev && op && cur) {
-      const result = compute(parseFloat(prev), parseFloat(cur), op);
-      if (result === null) {
-        setError('Cannot divide by zero');
-        return;
-      }
-      const resultStr = String(result);
-      setPrev(resultStr);
-      setCur('');
-      setOp(nextOp);
-      setExpression(`${formatNum(resultStr)} ${nextOp}`);
-    } else {
-      setPrev(cur);
-      setCur('');
-      setOp(nextOp);
-      setExpression(`${formatNum(cur)} ${nextOp}`);
     }
   };
 
   const compute = (a: number, b: number, operator: Op): number | null => {
     switch (operator) {
-      case '+': return a + b;
-      case '-': return a - b;
-      case '×': return a * b;
-      case '/':
+      case "+":
+        return a + b;
+      case "-":
+        return a - b;
+      case "×":
+        return a * b;
+      case "/":
         if (b === 0) return null;
         return Math.round((a / b) * 1e10) / 1e10;
-      default: return b;
+      default:
+        return b;
     }
   };
 
-  const handleEquals = () => {
-    setError('');
+  const handleOp = (nextOp: Op) => {
+    setError("");
+    setJustEvaluated(false);
+
+    if (prev && op && cur) {
+      const result = compute(parseFloat(prev), parseFloat(cur), op);
+
+      if (result === null) {
+        setError("Cannot divide by zero");
+        return;
+      }
+
+      const resultStr = String(result);
+      setPrev(resultStr);
+      setCur("");
+      setOp(nextOp);
+      setExpression(`${formatNum(resultStr)} ${nextOp}`);
+    } else {
+      setPrev(cur);
+      setCur("");
+      setOp(nextOp);
+      setExpression(`${formatNum(cur)} ${nextOp}`);
+    }
+  };
+
+  const handleEquals = async () => {
+    setError("");
+
     if (!op || !prev) return;
 
     const a = parseFloat(prev);
     const b = parseFloat(cur || prev);
 
     if (isNaN(a) || isNaN(b)) {
-      setError('Invalid input');
+      setError("Invalid input");
       return;
     }
 
     const result = compute(a, b, op);
+
     if (result === null) {
-      setError('Cannot divide by zero');
-      setCur('0');
-      setPrev('');
+      setError("Cannot divide by zero");
+      setCur("0");
+      setPrev("");
       setOp(null);
-      setExpression('');
+      setExpression("");
       return;
     }
 
     if (!isFinite(result)) {
-      setError('Result too large');
-      setCur('0');
-      setPrev('');
+      setError("Result too large");
+      setCur("0");
+      setPrev("");
       setOp(null);
-      setExpression('');
+      setExpression("");
       return;
     }
 
     const resultStr = parseFloat(result.toFixed(10)).toString();
     const fullExpr = `${formatNum(prev)} ${op} ${formatNum(cur || prev)} = ${formatNum(resultStr)}`;
+
     setExpression(fullExpr);
     setCur(resultStr);
-    setPrev('');
+    setPrev("");
     setOp(null);
     setJustEvaluated(true);
 
-    saveToHistory(`${prev} ${op} ${cur || prev} = ${resultStr}`);
+    await saveToHistoryEntry(`${prev} ${op} ${cur || prev} = ${resultStr}`);
   };
 
   const handleClear = () => {
-    setCur('0');
-    setPrev('');
+    setCur("0");
+    setPrev("");
     setOp(null);
-    setExpression('');
-    setError('');
+    setExpression("");
+    setError("");
     setJustEvaluated(false);
   };
 
   const handleToggleSign = () => {
-    if (cur === '0') return;
-    setCur(cur.startsWith('-') ? cur.slice(1) : '-' + cur);
+    if (cur === "0") return;
+    setCur(cur.startsWith("-") ? cur.slice(1) : "-" + cur);
   };
 
   const handlePercent = () => {
     const n = parseFloat(cur);
+
     if (isNaN(n)) {
-      setError('Invalid input');
+      setError("Invalid input");
       return;
     }
+
     setCur(String(n / 100));
   };
 
-  const displayValue = error || formatNum(cur || '0');
+  const displayValue = error || formatNum(cur || "0");
 
-  const CalcButton = ({ label, onPress, style, textStyle }: {
-    label: string; onPress: () => void; style?: any; textStyle?: any;
+  const CalcButton = ({
+    label,
+    onPress,
+    style,
+    textStyle,
+  }: {
+    label: string;
+    onPress: () => void;
+    style?: any;
+    textStyle?: any;
   }) => (
     <TouchableOpacity
       style={[s.btn, style]}
@@ -184,10 +206,13 @@ export default function Calculator() {
 
       <View style={s.display}>
         {expression ? (
-          <Text style={s.expr} numberOfLines={1}>{expression}</Text>
+          <Text style={s.expr} numberOfLines={1}>
+            {expression}
+          </Text>
         ) : null}
+
         <Text
-          style={[s.result, error && { color: '#FF3B30', fontSize: 20 }]}
+          style={[s.result, error && { color: "#FF3B30", fontSize: 20 }]}
           numberOfLines={1}
           adjustsFontSizeToFit
         >
@@ -197,33 +222,132 @@ export default function Calculator() {
 
       <View style={s.grid}>
         <View style={s.row}>
-          <CalcButton label="AC" onPress={handleClear} style={s.orangeBtn} textStyle={s.orangeText} />
-          <CalcButton label="±" onPress={handleToggleSign} style={s.orangeBtn} textStyle={s.orangeText} />
-          <CalcButton label="%" onPress={handlePercent} style={s.orangeBtn} textStyle={s.orangeText} />
-          <CalcButton label="+" onPress={() => handleOp('+')} style={s.orangeBtn} textStyle={s.orangeText} />
+          <CalcButton
+            label="AC"
+            onPress={handleClear}
+            style={s.orangeBtn}
+            textStyle={s.orangeText}
+          />
+          <CalcButton
+            label="±"
+            onPress={handleToggleSign}
+            style={s.orangeBtn}
+            textStyle={s.orangeText}
+          />
+          <CalcButton
+            label="%"
+            onPress={handlePercent}
+            style={s.orangeBtn}
+            textStyle={s.orangeText}
+          />
+          <CalcButton
+            label="+"
+            onPress={() => handleOp("+")}
+            style={s.orangeBtn}
+            textStyle={s.orangeText}
+          />
         </View>
+
         <View style={s.row}>
-          <CalcButton label="1" onPress={() => handleNum('1')} style={s.numBtn} textStyle={s.numText} />
-          <CalcButton label="2" onPress={() => handleNum('2')} style={s.numBtn} textStyle={s.numText} />
-          <CalcButton label="3" onPress={() => handleNum('3')} style={s.numBtn} textStyle={s.numText} />
-          <CalcButton label="-" onPress={() => handleOp('-')} style={s.orangeBtn} textStyle={s.orangeText} />
+          <CalcButton
+            label="1"
+            onPress={() => handleNum("1")}
+            style={s.numBtn}
+            textStyle={s.numText}
+          />
+          <CalcButton
+            label="2"
+            onPress={() => handleNum("2")}
+            style={s.numBtn}
+            textStyle={s.numText}
+          />
+          <CalcButton
+            label="3"
+            onPress={() => handleNum("3")}
+            style={s.numBtn}
+            textStyle={s.numText}
+          />
+          <CalcButton
+            label="-"
+            onPress={() => handleOp("-")}
+            style={s.orangeBtn}
+            textStyle={s.orangeText}
+          />
         </View>
+
         <View style={s.row}>
-          <CalcButton label="4" onPress={() => handleNum('4')} style={s.numBtn} textStyle={s.numText} />
-          <CalcButton label="5" onPress={() => handleNum('5')} style={s.numBtn} textStyle={s.numText} />
-          <CalcButton label="6" onPress={() => handleNum('6')} style={s.numBtn} textStyle={s.numText} />
-          <CalcButton label="x" onPress={() => handleOp('×')} style={s.orangeBtn} textStyle={s.orangeText} />
+          <CalcButton
+            label="4"
+            onPress={() => handleNum("4")}
+            style={s.numBtn}
+            textStyle={s.numText}
+          />
+          <CalcButton
+            label="5"
+            onPress={() => handleNum("5")}
+            style={s.numBtn}
+            textStyle={s.numText}
+          />
+          <CalcButton
+            label="6"
+            onPress={() => handleNum("6")}
+            style={s.numBtn}
+            textStyle={s.numText}
+          />
+          <CalcButton
+            label="x"
+            onPress={() => handleOp("×")}
+            style={s.orangeBtn}
+            textStyle={s.orangeText}
+          />
         </View>
+
         <View style={s.row}>
-          <CalcButton label="7" onPress={() => handleNum('7')} style={s.numBtn} textStyle={s.numText} />
-          <CalcButton label="8" onPress={() => handleNum('8')} style={s.numBtn} textStyle={s.numText} />
-          <CalcButton label="9" onPress={() => handleNum('9')} style={s.numBtn} textStyle={s.numText} />
-          <CalcButton label="/" onPress={() => handleOp('/')} style={s.orangeBtn} textStyle={s.orangeText} />
+          <CalcButton
+            label="7"
+            onPress={() => handleNum("7")}
+            style={s.numBtn}
+            textStyle={s.numText}
+          />
+          <CalcButton
+            label="8"
+            onPress={() => handleNum("8")}
+            style={s.numBtn}
+            textStyle={s.numText}
+          />
+          <CalcButton
+            label="9"
+            onPress={() => handleNum("9")}
+            style={s.numBtn}
+            textStyle={s.numText}
+          />
+          <CalcButton
+            label="/"
+            onPress={() => handleOp("/")}
+            style={s.orangeBtn}
+            textStyle={s.orangeText}
+          />
         </View>
+
         <View style={s.row}>
-          <CalcButton label="0" onPress={() => handleNum('0')} style={s.numBtn} textStyle={s.numText} />
-          <CalcButton label="." onPress={() => handleNum('.')} style={s.numBtn} textStyle={s.numText} />
-          <CalcButton label="=" onPress={handleEquals} style={s.orangeBtn} textStyle={s.orangeText} />
+          <CalcButton
+            label="0"
+            onPress={() => handleNum("0")}
+            style={s.numBtn}
+            textStyle={s.numText}
+          />
+          <CalcButton
+            label="."
+            onPress={() => handleNum(".")}
+            style={s.numBtn}
+            textStyle={s.numText}
+          />
+          <CalcButton
+            label="="
+            onPress={handleEquals}
+            style={s.orangeBtn}
+            textStyle={s.orangeText}
+          />
         </View>
       </View>
     </View>
@@ -233,74 +357,74 @@ export default function Calculator() {
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    paddingTop: 50,
+    backgroundColor: "#f5f5f5",
+    paddingTop: 70,
   },
   topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     marginBottom: 10,
   },
   screenTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#222',
+    fontWeight: "600",
+    color: "#222",
   },
   display: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     marginHorizontal: 16,
     borderRadius: 16,
     padding: 24,
     minHeight: 110,
-    justifyContent: 'flex-end',
-    alignItems: 'flex-end',
+    justifyContent: "flex-end",
+    alignItems: "flex-end",
     marginBottom: 20,
   },
   expr: {
-    color: '#888',
+    color: "#888",
     fontSize: 16,
     marginBottom: 8,
   },
   result: {
-    color: '#222',
+    color: "#222",
     fontSize: 38,
-    fontWeight: '300',
+    fontWeight: "300",
   },
   grid: {
     flex: 1,
     paddingHorizontal: 16,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
     paddingBottom: 30,
     gap: 10,
   },
   row: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
   },
   btn: {
     flex: 1,
     aspectRatio: 1,
     borderRadius: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   btnText: {
     fontSize: 22,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   numBtn: {
-    backgroundColor: '#e0e0e0',
+    backgroundColor: "#e0e0e0",
   },
   numText: {
-    color: '#333',
+    color: "#333",
   },
   orangeBtn: {
     backgroundColor: ORANGE,
   },
   orangeText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: "#fff",
+    fontWeight: "600",
   },
 });

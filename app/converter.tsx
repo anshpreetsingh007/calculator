@@ -1,15 +1,38 @@
-import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import {
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { saveHistory } from "./utils/history";
 
-const ORANGE = '#F5922A';
+const ORANGE = "#F5922A";
 
 const CONVERSIONS: Record<string, Record<string, number>> = {
-  cm: { cm: 1, m: 0.01, km: 0.00001, in: 0.393701, ft: 0.0328084, mi: 0.0000062137 },
+  cm: {
+    cm: 1,
+    m: 0.01,
+    km: 0.00001,
+    in: 0.393701,
+    ft: 0.0328084,
+    mi: 0.0000062137,
+  },
   m: { cm: 100, m: 1, km: 0.001, in: 39.3701, ft: 3.28084, mi: 0.000621371 },
   km: { cm: 100000, m: 1000, km: 1, in: 39370.1, ft: 3280.84, mi: 0.621371 },
-  in: { cm: 2.54, m: 0.0254, km: 0.0000254, in: 1, ft: 0.0833333, mi: 0.0000157828 },
+  in: {
+    cm: 2.54,
+    m: 0.0254,
+    km: 0.0000254,
+    in: 1,
+    ft: 0.0833333,
+    mi: 0.0000157828,
+  },
   ft: { cm: 30.48, m: 0.3048, km: 0.0003048, in: 12, ft: 1, mi: 0.000189394 },
   mi: { cm: 160934, m: 1609.34, km: 1.60934, in: 63360, ft: 5280, mi: 1 },
   kg: { kg: 1, g: 1000, lb: 2.20462, oz: 35.274 },
@@ -19,17 +42,17 @@ const CONVERSIONS: Record<string, Record<string, number>> = {
 };
 
 const CATEGORIES: Record<string, string[]> = {
-  Length: ['cm', 'm', 'km', 'in', 'ft', 'mi'],
-  Weight: ['kg', 'g', 'lb', 'oz'],
+  Length: ["cm", "m", "km", "in", "ft", "mi"],
+  Weight: ["kg", "g", "lb", "oz"],
 };
 
 export default function Converter() {
   const router = useRouter();
-  const [input, setInput] = useState('');
-  const [fromUnit, setFromUnit] = useState('cm');
-  const [toUnit, setToUnit] = useState('m');
+  const [input, setInput] = useState("");
+  const [fromUnit, setFromUnit] = useState("cm");
+  const [toUnit, setToUnit] = useState("m");
   const [result, setResult] = useState<string | null>(null);
-  const [err, setErr] = useState('');
+  const [err, setErr] = useState("");
   const [showFromPicker, setShowFromPicker] = useState(false);
   const [showToPicker, setShowToPicker] = useState(false);
 
@@ -45,18 +68,20 @@ export default function Converter() {
     return cat ? CATEGORIES[cat] : [];
   };
 
-  const convert = () => {
-    setErr('');
+  const convert = async () => {
+    setErr("");
     setResult(null);
+    setShowFromPicker(false);
+    setShowToPicker(false);
 
     if (!input.trim()) {
-      setErr('Please enter a value');
+      setErr("Please enter a value");
       return;
     }
 
     const n = parseFloat(input);
     if (isNaN(n)) {
-      setErr('Enter a valid number');
+      setErr("Enter a valid number");
       return;
     }
 
@@ -67,26 +92,68 @@ export default function Converter() {
 
     const factor = CONVERSIONS[fromUnit]?.[toUnit];
     if (!factor && factor !== 0) {
-      setErr('Conversion not supported');
+      setErr("Conversion not supported");
       return;
     }
 
     const converted = n * factor;
-    setResult(parseFloat(converted.toFixed(6)).toString());
+    const finalResult = parseFloat(converted.toFixed(6)).toString();
+    setResult(finalResult);
+
+    await saveHistory({
+      type: "converter",
+      text: `${n} ${fromUnit} = ${finalResult} ${toUnit}`,
+    });
   };
 
-  const UnitPicker = ({ units, selected, onSelect, onClose }: {
-    units: string[]; selected: string; onSelect: (u: string) => void; onClose: () => void;
+  const swapUnits = () => {
+    const oldFrom = fromUnit;
+    setFromUnit(toUnit);
+    setToUnit(oldFrom);
+    setResult(null);
+    setErr("");
+    setShowFromPicker(false);
+    setShowToPicker(false);
+  };
+
+  const clearFields = () => {
+    setInput("");
+    setResult(null);
+    setErr("");
+    setShowFromPicker(false);
+    setShowToPicker(false);
+  };
+
+  const UnitPicker = ({
+    units,
+    selected,
+    onSelect,
+    onClose,
+  }: {
+    units: string[];
+    selected: string;
+    onSelect: (u: string) => void;
+    onClose: () => void;
   }) => (
     <View style={s.pickerOverlay}>
       <View style={s.pickerCard}>
-        {units.map(u => (
+        {units.map((u) => (
           <TouchableOpacity
             key={u}
             style={[s.pickerItem, u === selected && s.pickerSelected]}
-            onPress={() => { onSelect(u); onClose(); }}
+            onPress={() => {
+              onSelect(u);
+              onClose();
+            }}
           >
-            <Text style={[s.pickerText, u === selected && { color: ORANGE, fontWeight: '700' }]}>{u}</Text>
+            <Text
+              style={[
+                s.pickerText,
+                u === selected && { color: ORANGE, fontWeight: "700" },
+              ]}
+            >
+              {u}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -107,6 +174,8 @@ export default function Converter() {
 
       <ScrollView contentContainerStyle={s.body}>
         <View style={s.card}>
+          <Text style={s.categoryText}>Category: {getCategory(fromUnit)}</Text>
+
           <View style={s.inputRow}>
             <TextInput
               style={s.input}
@@ -114,9 +183,19 @@ export default function Converter() {
               placeholderTextColor="#bbb"
               keyboardType="decimal-pad"
               value={input}
-              onChangeText={(t) => { setInput(t); setErr(''); }}
+              onChangeText={(t) => {
+                setInput(t);
+                setErr("");
+                setResult(null);
+              }}
             />
-            <TouchableOpacity style={s.unitBtn} onPress={() => { setShowFromPicker(!showFromPicker); setShowToPicker(false); }}>
+            <TouchableOpacity
+              style={s.unitBtn}
+              onPress={() => {
+                setShowFromPicker(!showFromPicker);
+                setShowToPicker(false);
+              }}
+            >
               <Text style={s.unitLabel}>{fromUnit}</Text>
               <Ionicons name="chevron-down" size={16} color="#666" />
             </TouchableOpacity>
@@ -128,6 +207,8 @@ export default function Converter() {
               selected={fromUnit}
               onSelect={(u) => {
                 setFromUnit(u);
+                setResult(null);
+                setErr("");
                 const cat = getCategory(u);
                 if (cat && !CATEGORIES[cat].includes(toUnit)) {
                   setToUnit(CATEGORIES[cat][1] || CATEGORIES[cat][0]);
@@ -141,13 +222,28 @@ export default function Converter() {
             <Ionicons name="arrow-down" size={28} color="#999" />
           </View>
 
+          <TouchableOpacity
+            style={s.swapBtn}
+            onPress={swapUnits}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="swap-vertical" size={18} color={ORANGE} />
+            <Text style={s.swapText}>Swap units</Text>
+          </TouchableOpacity>
+
           <View style={s.inputRow}>
             <View style={[s.input, s.outputField]}>
-              <Text style={[s.outputText, !result && { color: '#bbb' }]}>
-                {result ?? '0'}
+              <Text style={[s.outputText, !result && { color: "#bbb" }]}>
+                {result ?? "0"}
               </Text>
             </View>
-            <TouchableOpacity style={s.unitBtn} onPress={() => { setShowToPicker(!showToPicker); setShowFromPicker(false); }}>
+            <TouchableOpacity
+              style={s.unitBtn}
+              onPress={() => {
+                setShowToPicker(!showToPicker);
+                setShowFromPicker(false);
+              }}
+            >
               <Text style={s.unitLabel}>{toUnit}</Text>
               <Ionicons name="chevron-down" size={16} color="#666" />
             </TouchableOpacity>
@@ -157,7 +253,11 @@ export default function Converter() {
             <UnitPicker
               units={compatibleUnits()}
               selected={toUnit}
-              onSelect={setToUnit}
+              onSelect={(u) => {
+                setToUnit(u);
+                setResult(null);
+                setErr("");
+              }}
               onClose={() => setShowToPicker(false)}
             />
           )}
@@ -170,8 +270,20 @@ export default function Converter() {
           </View>
         ) : null}
 
-        <TouchableOpacity style={s.convertBtn} onPress={convert} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={s.convertBtn}
+          onPress={convert}
+          activeOpacity={0.8}
+        >
           <Text style={s.convertText}>Convert</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={s.clearBtn}
+          onPress={clearFields}
+          activeOpacity={0.8}
+        >
+          <Text style={s.clearText}>Clear</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -181,59 +293,65 @@ export default function Converter() {
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    paddingTop: 50,
+    backgroundColor: "#f5f5f5",
+    paddingTop: 70,
   },
   topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     marginBottom: 20,
   },
   screenTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#222',
+    fontWeight: "600",
+    color: "#222",
   },
   body: {
     paddingHorizontal: 24,
     paddingTop: 20,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 24,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
+  categoryText: {
+    fontSize: 14,
+    color: ORANGE,
+    fontWeight: "700",
+    marginBottom: 18,
+  },
   inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   input: {
     flex: 1,
     fontSize: 22,
-    color: '#333',
+    color: "#333",
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
     paddingVertical: 10,
   },
   outputField: {
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
   },
   outputText: {
     fontSize: 22,
-    color: '#333',
+    color: "#333",
   },
   unitBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -241,56 +359,83 @@ const s = StyleSheet.create({
   },
   unitLabel: {
     fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
+    color: "#333",
+    fontWeight: "500",
   },
   arrowWrap: {
-    alignItems: 'center',
-    paddingVertical: 16,
+    alignItems: "center",
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  swapBtn: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 16,
+  },
+  swapText: {
+    color: ORANGE,
+    fontSize: 14,
+    fontWeight: "600",
   },
   convertBtn: {
     backgroundColor: ORANGE,
     borderRadius: 14,
     paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 30,
   },
   convertText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
+  },
+  clearBtn: {
+    marginTop: 12,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#e3e3e3",
+  },
+  clearText: {
+    color: "#333",
+    fontSize: 16,
+    fontWeight: "600",
   },
   errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginTop: 16,
     paddingHorizontal: 4,
   },
   errorText: {
-    color: '#FF3B30',
+    color: "#FF3B30",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   pickerOverlay: {
     marginVertical: 8,
   },
   pickerCard: {
-    backgroundColor: '#fafafa',
+    backgroundColor: "#fafafa",
     borderRadius: 10,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   pickerItem: {
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
   },
   pickerSelected: {
-    backgroundColor: '#FFF3E6',
+    backgroundColor: "#FFF3E6",
   },
   pickerText: {
     fontSize: 16,
-    color: '#444',
+    color: "#444",
   },
 });

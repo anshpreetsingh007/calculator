@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import { zodResolver } from "@hookform/resolvers/zod";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -14,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { signUpSchema, type SignUpFormData } from "../lib/authSchemas";
 import { supabase } from "../lib/supabase";
 
 const ORANGE = "#F5A623";
@@ -22,10 +25,21 @@ export default function SignUp() {
   const router = useRouter();
 
   const [darkMode, setDarkMode] = useState(false);
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignUpFormData>({
+    resolver: zodResolver(signUpSchema),
+    defaultValues: {
+      fullName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
 
   useFocusEffect(
     useCallback(() => {
@@ -44,27 +58,36 @@ export default function SignUp() {
     }, []),
   );
 
-  const handleCreateAccount = async () => {
-    if (!fullName || !email || !password || !confirmPassword) {
-      Alert.alert("Error", "Please fill all fields.");
-      return;
-    }
+  const handleCreateAccount = async (data: SignUpFormData) => {
+    setLoading(true);
 
-    if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match.");
-      return;
-    }
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: data.email.trim(),
+        password: data.password,
+        options: {
+          data: {
+            full_name: data.fullName,
+          },
+        },
+      });
 
-    const { error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-    });
+      if (error) {
+        let message = error.message;
 
-    if (error) {
-      Alert.alert("Sign Up Failed", error.message);
-    } else {
-      Alert.alert("Success", "Account created successfully.");
-      router.replace("/home");
+        if (message.toLowerCase().includes("password")) {
+          message = "Password must be at least 6 characters.";
+        }
+
+        Alert.alert("Sign Up Failed", message);
+      } else {
+        Alert.alert("Success", "Account created successfully.");
+        router.replace("/home");
+      }
+    } catch (error) {
+      Alert.alert("Network Error", "Please check your internet connection.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -110,80 +133,129 @@ export default function SignUp() {
           </View>
 
           <View style={s.form}>
-            <View style={[s.inputBox, darkMode && s.inputBoxDark]}>
-              <Ionicons
-                name="person-outline"
-                size={20}
-                color={darkMode ? "#aaa" : "#999"}
-                style={s.inputIcon}
-              />
-              <TextInput
-                style={[s.input, darkMode && s.inputDark]}
-                placeholder="Full Name"
-                placeholderTextColor={darkMode ? "#888" : "#999"}
-                value={fullName}
-                onChangeText={setFullName}
-              />
+            <View>
+              <View style={[s.inputBox, darkMode && s.inputBoxDark]}>
+                <Ionicons
+                  name="person-outline"
+                  size={20}
+                  color={darkMode ? "#aaa" : "#999"}
+                  style={s.inputIcon}
+                />
+                <Controller
+                  control={control}
+                  name="fullName"
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      style={[s.input, darkMode && s.inputDark]}
+                      placeholder="Full Name"
+                      placeholderTextColor={darkMode ? "#888" : "#999"}
+                      value={value}
+                      onChangeText={onChange}
+                    />
+                  )}
+                />
+              </View>
+              {errors.fullName && (
+                <Text style={s.errorText}>{errors.fullName.message}</Text>
+              )}
             </View>
 
-            <View style={[s.inputBox, darkMode && s.inputBoxDark]}>
-              <Ionicons
-                name="mail-outline"
-                size={20}
-                color={darkMode ? "#aaa" : "#999"}
-                style={s.inputIcon}
-              />
-              <TextInput
-                style={[s.input, darkMode && s.inputDark]}
-                placeholder="Email Address"
-                placeholderTextColor={darkMode ? "#888" : "#999"}
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
+            <View>
+              <View style={[s.inputBox, darkMode && s.inputBoxDark]}>
+                <Ionicons
+                  name="mail-outline"
+                  size={20}
+                  color={darkMode ? "#aaa" : "#999"}
+                  style={s.inputIcon}
+                />
+                <Controller
+                  control={control}
+                  name="email"
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      style={[s.input, darkMode && s.inputDark]}
+                      placeholder="Email Address"
+                      placeholderTextColor={darkMode ? "#888" : "#999"}
+                      value={value}
+                      onChangeText={onChange}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                    />
+                  )}
+                />
+              </View>
+              {errors.email && (
+                <Text style={s.errorText}>{errors.email.message}</Text>
+              )}
             </View>
 
-            <View style={[s.inputBox, darkMode && s.inputBoxDark]}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={20}
-                color={darkMode ? "#aaa" : "#999"}
-                style={s.inputIcon}
-              />
-              <TextInput
-                style={[s.input, darkMode && s.inputDark]}
-                placeholder="Password"
-                placeholderTextColor={darkMode ? "#888" : "#999"}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
+            <View>
+              <View style={[s.inputBox, darkMode && s.inputBoxDark]}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color={darkMode ? "#aaa" : "#999"}
+                  style={s.inputIcon}
+                />
+                <Controller
+                  control={control}
+                  name="password"
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      style={[s.input, darkMode && s.inputDark]}
+                      placeholder="Password"
+                      placeholderTextColor={darkMode ? "#888" : "#999"}
+                      value={value}
+                      onChangeText={onChange}
+                      secureTextEntry
+                    />
+                  )}
+                />
+              </View>
+              {errors.password && (
+                <Text style={s.errorText}>{errors.password.message}</Text>
+              )}
             </View>
 
-            <View style={[s.inputBox, darkMode && s.inputBoxDark]}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={20}
-                color={darkMode ? "#aaa" : "#999"}
-                style={s.inputIcon}
-              />
-              <TextInput
-                style={[s.input, darkMode && s.inputDark]}
-                placeholder="Confirm Password"
-                placeholderTextColor={darkMode ? "#888" : "#999"}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-              />
+            <View>
+              <View style={[s.inputBox, darkMode && s.inputBoxDark]}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color={darkMode ? "#aaa" : "#999"}
+                  style={s.inputIcon}
+                />
+                <Controller
+                  control={control}
+                  name="confirmPassword"
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      style={[s.input, darkMode && s.inputDark]}
+                      placeholder="Confirm Password"
+                      placeholderTextColor={darkMode ? "#888" : "#999"}
+                      value={value}
+                      onChangeText={onChange}
+                      secureTextEntry
+                    />
+                  )}
+                />
+              </View>
+              {errors.confirmPassword && (
+                <Text style={s.errorText}>
+                  {errors.confirmPassword.message}
+                </Text>
+              )}
             </View>
 
             <TouchableOpacity
-              style={s.createButton}
+              style={[s.createButton, loading && s.createButtonDisabled]}
               activeOpacity={0.8}
-              onPress={handleCreateAccount}
+              onPress={handleSubmit(handleCreateAccount)}
+              disabled={loading}
             >
-              <Text style={s.createButtonText}>Create Account</Text>
+              <Text style={s.createButtonText}>
+                {loading ? "Creating Account..." : "Create Account"}
+              </Text>
             </TouchableOpacity>
 
             <View style={s.bottomRow}>
@@ -295,6 +367,9 @@ const s = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  createButtonDisabled: {
+    opacity: 0.7,
+  },
   createButtonText: {
     color: "#fff",
     fontSize: 18,
@@ -313,5 +388,11 @@ const s = StyleSheet.create({
     fontSize: 16,
     color: ORANGE,
     fontWeight: "700",
+  },
+  errorText: {
+    color: "#d32f2f",
+    fontSize: 13,
+    marginTop: 6,
+    marginLeft: 6,
   },
 });

@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import { zodResolver } from "@hookform/resolvers/zod";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -14,15 +16,27 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { signInSchema, type SignInFormData } from "../lib/authSchemas";
 import { supabase } from "../lib/supabase";
 
 const ORANGE = "#F5922A";
 
 export default function SignIn() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [darkMode, setDarkMode] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignInFormData>({
+    resolver: zodResolver(signInSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
   useFocusEffect(
     useCallback(() => {
@@ -38,21 +52,31 @@ export default function SignIn() {
     }, []),
   );
 
-  const handleSignIn = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please enter email and password.");
-      return;
-    }
+  const onSubmit = async (data: SignInFormData) => {
+    setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: data.email.trim(),
+        password: data.password,
+      });
 
-    if (error) {
-      Alert.alert("Sign In Failed", error.message);
-    } else {
+      if (error) {
+        let message = error.message;
+
+        if (message.toLowerCase().includes("invalid login credentials")) {
+          message = "Invalid email or password.";
+        }
+
+        Alert.alert("Sign In Failed", message);
+        return;
+      }
+
       router.replace("/home");
+    } catch {
+      Alert.alert("Network Error", "Please check your internet connection.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -84,39 +108,61 @@ export default function SignIn() {
           </View>
 
           <View style={s.form}>
-            <View style={[s.inputGroup, darkMode && s.inputGroupDark]}>
-              <Ionicons
-                name="mail-outline"
-                size={20}
-                color={darkMode ? "#888" : "#999"}
-                style={s.inputIcon}
-              />
-              <TextInput
-                style={[s.input, darkMode && s.inputDark]}
-                placeholder="Email Address"
-                placeholderTextColor={darkMode ? "#666" : "#aaa"}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
+            <View>
+              <View style={[s.inputGroup, darkMode && s.inputGroupDark]}>
+                <Ionicons
+                  name="mail-outline"
+                  size={20}
+                  color={darkMode ? "#888" : "#999"}
+                  style={s.inputIcon}
+                />
+                <Controller
+                  control={control}
+                  name="email"
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      style={[s.input, darkMode && s.inputDark]}
+                      placeholder="Email Address"
+                      placeholderTextColor={darkMode ? "#666" : "#aaa"}
+                      value={value}
+                      onChangeText={onChange}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                  )}
+                />
+              </View>
+              {errors.email && (
+                <Text style={s.errorText}>{errors.email.message}</Text>
+              )}
             </View>
 
-            <View style={[s.inputGroup, darkMode && s.inputGroupDark]}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={20}
-                color={darkMode ? "#888" : "#999"}
-                style={s.inputIcon}
-              />
-              <TextInput
-                style={[s.input, darkMode && s.inputDark]}
-                placeholder="Password"
-                placeholderTextColor={darkMode ? "#666" : "#aaa"}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
+            <View>
+              <View style={[s.inputGroup, darkMode && s.inputGroupDark]}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color={darkMode ? "#888" : "#999"}
+                  style={s.inputIcon}
+                />
+                <Controller
+                  control={control}
+                  name="password"
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      style={[s.input, darkMode && s.inputDark]}
+                      placeholder="Password"
+                      placeholderTextColor={darkMode ? "#666" : "#aaa"}
+                      value={value}
+                      onChangeText={onChange}
+                      secureTextEntry
+                    />
+                  )}
+                />
+              </View>
+              {errors.password && (
+                <Text style={s.errorText}>{errors.password.message}</Text>
+              )}
             </View>
 
             <TouchableOpacity style={s.forgotBtn}>
@@ -124,11 +170,14 @@ export default function SignIn() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={s.signInBtn}
+              style={[s.signInBtn, loading && s.signInBtnDisabled]}
               activeOpacity={0.8}
-              onPress={handleSignIn}
+              onPress={handleSubmit(onSubmit)}
+              disabled={loading}
             >
-              <Text style={s.signInBtnText}>Sign In</Text>
+              <Text style={s.signInBtnText}>
+                {loading ? "Signing In..." : "Sign In"}
+              </Text>
             </TouchableOpacity>
 
             <View style={s.footer}>
@@ -261,6 +310,9 @@ const s = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+  signInBtnDisabled: {
+    opacity: 0.7,
+  },
   signInBtnText: {
     color: "#fff",
     fontSize: 18,
@@ -279,5 +331,11 @@ const s = StyleSheet.create({
     fontSize: 15,
     color: ORANGE,
     fontWeight: "700",
+  },
+  errorText: {
+    color: "#d32f2f",
+    fontSize: 13,
+    marginTop: 6,
+    marginLeft: 6,
   },
 });

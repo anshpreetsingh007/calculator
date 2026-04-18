@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { saveHistory } from "./utils/history";
+import { saveHistory } from "../utils/history";
 
 // Main orange color
 const ORANGE = "#F5922A";
@@ -95,7 +95,7 @@ export default function Converter() {
       };
 
       loadTheme();
-    }, [])
+    }, []),
   );
 
   // Find which category a unit belongs to (Length or Weight)

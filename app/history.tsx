@@ -7,15 +7,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-  Alert,
-  FlatList,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    FlatList,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import { clearHistory, getHistory, HistoryItem } from "./utils/history";
+import { clearHistory, getHistory, HistoryItem } from "../utils/history";
 
 // Main orange color
 const ORANGE = "#F5922A";
@@ -36,7 +36,7 @@ export default function History() {
     useCallback(() => {
       loadHistory();
       loadTheme();
-    }, [])
+    }, []),
   );
 
   // Fetch all history items from storage

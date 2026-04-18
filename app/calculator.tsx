@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { saveHistory } from "./utils/history";
+import { saveHistory } from "../utils/history";
 
 // Main orange color used for operator buttons
 const ORANGE = "#F5922A";
@@ -52,7 +52,7 @@ export default function Calculator() {
       };
 
       loadTheme();
-    }, [])
+    }, []),
   );
 
   // Save a calculation result to history storage
@@ -184,7 +184,7 @@ export default function Calculator() {
     // Show the result and save to history
     const resultStr = parseFloat(result.toFixed(10)).toString();
     const fullExpr = `${formatNum(prev)} ${op} ${formatNum(
-      cur || prev
+      cur || prev,
     )} = ${formatNum(resultStr)}`;
 
     setExpression(fullExpr);

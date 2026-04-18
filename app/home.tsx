@@ -7,12 +7,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  Alert,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { supabase } from "../lib/supabase";
 
 const ORANGE = "#F5922A";
 
@@ -69,6 +71,28 @@ export default function Home() {
     }
   };
 
+  const handleLogout = () => {
+    Alert.alert("Log out", "Are you sure you want to log out?", [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Log out",
+        style: "destructive",
+        onPress: async () => {
+          const { error } = await supabase.auth.signOut();
+
+          if (error) {
+            Alert.alert("Logout Failed", error.message);
+          } else {
+            router.replace("/");
+          }
+        },
+      },
+    ]);
+  };
+
   return (
     <View style={[s.container, darkMode && s.containerDark]}>
       <StatusBar barStyle={darkMode ? "light-content" : "dark-content"} />
@@ -76,13 +100,23 @@ export default function Home() {
       <View style={s.header}>
         <Text style={[s.title, darkMode && s.titleDark]}>Home</Text>
 
-        <TouchableOpacity onPress={toggleDarkMode}>
-          <Ionicons
-            name={darkMode ? "sunny" : "moon"}
-            size={24}
-            color={darkMode ? "#FFD93D" : "#333"}
-          />
-        </TouchableOpacity>
+        <View style={s.headerIcons}>
+          <TouchableOpacity onPress={toggleDarkMode} style={s.iconButton}>
+            <Ionicons
+              name={darkMode ? "sunny" : "moon"}
+              size={24}
+              color={darkMode ? "#FFD93D" : "#333"}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={handleLogout} style={s.iconButton}>
+            <Ionicons
+              name="log-out-outline"
+              size={24}
+              color={darkMode ? "#f0f0f0" : "#333"}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={s.menu}>
@@ -101,11 +135,7 @@ export default function Home() {
               name={item.icon}
               size={22}
               color={
-                item.color === ORANGE
-                  ? "#fff"
-                  : darkMode
-                  ? "#ccc"
-                  : "#555"
+                item.color === ORANGE ? "#fff" : darkMode ? "#ccc" : "#555"
               }
               style={s.cardIcon}
             />
@@ -123,7 +153,9 @@ export default function Home() {
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={item.color === ORANGE ? "#fff" : darkMode ? "#888" : "#aaa"}
+              color={
+                item.color === ORANGE ? "#fff" : darkMode ? "#888" : "#aaa"
+              }
             />
           </TouchableOpacity>
         ))}
@@ -155,6 +187,13 @@ const s = StyleSheet.create({
   },
   titleDark: {
     color: "#f0f0f0",
+  },
+  headerIcons: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  iconButton: {
+    marginLeft: 14,
   },
   menu: {
     gap: 14,

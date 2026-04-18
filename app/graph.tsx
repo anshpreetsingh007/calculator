@@ -16,7 +16,7 @@ import {
   View,
 } from "react-native";
 import Svg, { Line, Polyline, Text as SvgText } from "react-native-svg";
-import { saveHistory } from "./utils/history";
+import { saveHistory } from "../utils/history";
 
 // Main orange color for the plotted line and buttons
 const ORANGE = "#F5922A";
@@ -62,7 +62,7 @@ function parseEquation(input: string) {
   // Try to create a function from the expression
   try {
     const fn = new Function("x", `"use strict"; return (${expr});`) as (
-      x: number
+      x: number,
     ) => number;
     // Test it with x=1 to make sure it works
     const test = fn(1);
@@ -100,7 +100,7 @@ export default function GraphCalc() {
       };
 
       loadTheme();
-    }, [])
+    }, []),
   );
 
   // Convert a math x value to screen x position (pixels)
@@ -198,7 +198,7 @@ export default function GraphCalc() {
         y2={toScreenY(i)}
         stroke={darkMode ? "#3a3a3a" : "#e0e0e0"}
         strokeWidth={0.5}
-      />
+      />,
     );
   }
 

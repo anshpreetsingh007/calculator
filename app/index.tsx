@@ -1,18 +1,21 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter, useFocusEffect } from "expo-router";
-import React, { useState, useCallback } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import React, { useCallback, useState } from "react";
 import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
 } from "react-native";
+import { auth } from "../lib/firebase";
 
 const ORANGE = "#F5922A";
 
@@ -33,13 +36,27 @@ export default function SignIn() {
         }
       };
       loadTheme();
-    }, [])
+    }, []),
   );
+
+  const handleSignIn = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter email and password.");
+      return;
+    }
+
+    try {
+      await signInWithEmailAndPassword(auth, email.trim(), password);
+      router.replace("/home");
+    } catch (error: any) {
+      Alert.alert("Sign In Failed", error.message);
+    }
+  };
 
   return (
     <View style={[s.container, darkMode && s.containerDark]}>
       <StatusBar barStyle={darkMode ? "light-content" : "dark-content"} />
-      
+
       <View style={s.header}>
         <View style={{ width: 44 }} />
         <Text style={[s.title, darkMode && s.titleDark]}>Sign In</Text>
@@ -55,7 +72,9 @@ export default function SignIn() {
             <View style={s.iconCircle}>
               <Ionicons name="calculator" size={40} color="#fff" />
             </View>
-            <Text style={[s.welcomeTitle, darkMode && s.textDark]}>Welcome Back</Text>
+            <Text style={[s.welcomeTitle, darkMode && s.textDark]}>
+              Welcome Back
+            </Text>
             <Text style={[s.welcomeSub, darkMode && s.textMutedDark]}>
               Please sign in to continue
             </Text>
@@ -63,7 +82,12 @@ export default function SignIn() {
 
           <View style={s.form}>
             <View style={[s.inputGroup, darkMode && s.inputGroupDark]}>
-              <Ionicons name="mail-outline" size={20} color={darkMode ? "#888" : "#999"} style={s.inputIcon} />
+              <Ionicons
+                name="mail-outline"
+                size={20}
+                color={darkMode ? "#888" : "#999"}
+                style={s.inputIcon}
+              />
               <TextInput
                 style={[s.input, darkMode && s.inputDark]}
                 placeholder="Email Address"
@@ -76,7 +100,12 @@ export default function SignIn() {
             </View>
 
             <View style={[s.inputGroup, darkMode && s.inputGroupDark]}>
-              <Ionicons name="lock-closed-outline" size={20} color={darkMode ? "#888" : "#999"} style={s.inputIcon} />
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color={darkMode ? "#888" : "#999"}
+                style={s.inputIcon}
+              />
               <TextInput
                 style={[s.input, darkMode && s.inputDark]}
                 placeholder="Password"
@@ -91,16 +120,18 @@ export default function SignIn() {
               <Text style={s.forgotText}>Forgot Password?</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={s.signInBtn} 
+            <TouchableOpacity
+              style={s.signInBtn}
               activeOpacity={0.8}
-              onPress={() => router.replace("/home")}
+              onPress={handleSignIn}
             >
               <Text style={s.signInBtnText}>Sign In</Text>
             </TouchableOpacity>
 
             <View style={s.footer}>
-              <Text style={[s.footerText, darkMode && s.textMutedDark]}>Don't have an account? </Text>
+              <Text style={[s.footerText, darkMode && s.textMutedDark]}>
+                Don't have an account?{" "}
+              </Text>
               <TouchableOpacity>
                 <Text style={s.signUpText}>Sign Up</Text>
               </TouchableOpacity>

@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
-import { signInWithEmailAndPassword } from "firebase/auth";
 import React, { useCallback, useState } from "react";
 import {
   Alert,
@@ -15,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { auth } from "../lib/firebase";
+import { supabase } from "../lib/supabase";
 
 const ORANGE = "#F5922A";
 
@@ -45,11 +44,15 @@ export default function SignIn() {
       return;
     }
 
-    try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      router.replace("/home");
-    } catch (error: any) {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
+    if (error) {
       Alert.alert("Sign In Failed", error.message);
+    } else {
+      router.replace("/home");
     }
   };
 
@@ -132,7 +135,7 @@ export default function SignIn() {
               <Text style={[s.footerText, darkMode && s.textMutedDark]}>
                 Don't have an account?{" "}
               </Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push("/signup")}>
                 <Text style={s.signUpText}>Sign Up</Text>
               </TouchableOpacity>
             </View>
